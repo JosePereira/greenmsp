@@ -8,6 +8,7 @@ Instrucao = Atribuicao(c1:LComentarios,Id:String,c2:LComentarios,op:OpAtribuicao
 	| While(c1:LComentarios,c2:LComentarios,c3:LComentarios,Condicao:Expressao,c4:LComentarios,c5:LComentarios,Instrucao:Instrucao,c6:LComentarios)
 	| For(c1:LComentarios,c2:LComentarios,Declaracao:Instrucao,c3:LComentarios,Condicao:Expressao,c4:LComentarios,c5:LComentarios,Expressao:Expressao,c6:LComentarios,c7:LComentarios,Instrucao:Instrucao,c8:LComentarios)
 	| Return(c1:LComentarios,c2:LComentarios,Expressao:Expressao,c3:LComentarios)
+	| Assert(Nome:String,ArgumentosAssert:ArgumentosAssert,ExpectedAssert:ExpectedAssert)
 	| Funcao(c1:LComentarios,DefTipo:DefTipo,c2:LComentarios,Nome:String,c3:LComentarios,c4:LComentarios,Argumentos:Argumentos,c5:LComentarios,c6:LComentarios,Instrucao:Instrucao,c7:LComentarios)
 	| Exp(Expressao:Expressao)
 	| SeqInstrucao(Instrucao*)
@@ -34,6 +35,17 @@ DefTipo = DInt() | DChar() | DBoolean() | DFloat() | DVoid()
 
 Argumentos = ListaArgumentos(Argumentos*)
 	| Argumento(c1:LComentarios,DefTipo:DefTipo,c2:LComentarios,Id:String,c3:LComentarios)
+
+ArgumentosAssert = ListaArgsAssert(ArgumentosAssert*)
+	| ArgumentoAssertInt(Int:int)
+	| ArgumentoAssertChar(Char:String)
+	| ArgumentoAssertBool(BoolAssert:String)
+
+ExpectedAssert = ExpAssert(ExpectedAssert*)
+	| ExpectedArgInt(Int:int)
+	| ExpectedArgChar(Char:String)
+	| ExpectedArgBool(BoolAssert:String)
+	| ExpectedArgComp(CompAssert:String,Int:int)
 
 Parametros = ListaParametros(Parametros*)
 	| Parametro(c1:LComentarios,Expressao:Expressao,c2:LComentarios)
