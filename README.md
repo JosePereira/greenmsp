@@ -1,4 +1,6 @@
-# greenmsp
+## Mestrado em Engenharia Informática
+## Análise e Teste de Software
+### greenmsp - framework de teste unitário em C--
 
 >abrir 2 terminais em greenmsp/Tools/i2msp/Tom/
 
