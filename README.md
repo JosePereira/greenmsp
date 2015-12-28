@@ -6,7 +6,7 @@
 
 >utiliar Java 7 (verificar a versão com: java -version)
 
-export JAVA_HOME=`/usr/libexec/java_home -v 1.7`
+export JAVA_HOME='/usr/libexec/java_home -v 1.7'
 
 >exports
 
