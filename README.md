@@ -9,7 +9,7 @@
 > run the script at both terminals
 . script.sh 
 
->>Terminal 1 - to compile file .i
+>>>Terminal 1 - to compile file .i
 
 >>make all
 
@@ -21,10 +21,7 @@
 
 >>java gram/Main -assert  < myTest.i > myTest.msp
 
-
-
-
->>Terminal 2 - to run program C-- in virtual machine MSP ("Mais Simples Possível")
+>>>Terminal 2 - to run program C-- in virtual machine MSP ("Mais Simples Possível")
 
 >>cd genMaqV/
 
