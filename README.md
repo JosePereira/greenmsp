@@ -11,15 +11,15 @@
 
 >>Terminal 1 - to compile file .i
 
-make all
+>>make all
 
-cd genI/
+>>cd genI/
 
-cp ../exemplos/myTest.i .
+>>cp ../exemplos/myTest.i .
 
-javac gram/Main.java
+>>javac gram/Main.java
 
-java gram/Main -assert  < myTest.i > myTest.msp
+>>java gram/Main -assert  < myTest.i > myTest.msp
 
 >>Terminal 2 - to run program C-- in virtual machine MSP ("Mais Simples Possível")
 
