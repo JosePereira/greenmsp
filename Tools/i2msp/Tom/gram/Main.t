@@ -2,6 +2,15 @@ package gram;
 
 import gram.i.iAdaptor;
 import gram.i.types.*;
+import gram.i.types.instrucao.*;
+import gram.i.types.expectedassert.*;
+import gram.i.types.parametros.*;
+import gram.i.types.argumentos.*;
+import gram.i.types.argumentosassert.*;
+import gram.i.types.expressao.*;
+import gram.i.types.lcomentarios.*;
+import gram.i.types.opcomp.*;
+import gram.i.types.deftipo.*;
 import org.antlr.runtime.CommonTokenStream;
 import org.antlr.runtime.ANTLRInputStream;
 import org.antlr.runtime.tree.Tree;
@@ -20,14 +29,17 @@ public class Main {
 	%include{util/types/Set.tom}
 	%include{../genI/gram/i/i.tom}
 
+
 	private String actualFunctionName;
 	HashMap<String, Argumentos> functionSignatures;
 	private boolean callReturnNeeded;
 	private int memAdress;
 	StringBuilder functionsDeclarations;
 
+	private int myAssertCount; //contador para o número de Asserts
+
 	public static void main(String[] args) {
-		try {
+		try {			
 			iLexer lexer = new iLexer(new ANTLRInputStream(System.in));
 			CommonTokenStream tokens = new CommonTokenStream(lexer);
 			iParser parser = new iParser(tokens);
@@ -36,8 +48,8 @@ public class Main {
 			//System.out.println("Result = " + iAdaptor.getTerm(b)); // name of the Gom module + Adaptor
 			Instrucao p = (Instrucao) iAdaptor.getTerm(b);
 
-      //teste para verificar que a gramatica esta a funcionar      
-      System.out.println("Inicio\n"+p.toString()+"\nFim\n");
+      		//teste para verificar que a gramatica esta a funcionar
+      		//System.out.println("InicioCARALHO\n"+p.toString()+"\nFim\n");
 
 			Main main = new Main();
 
@@ -67,17 +79,21 @@ public class Main {
 						}
 					}
                     else if(args[0].equals("-assert")){
-                        System.out.println("programa em modos assert");
+                        //System.out.println("programa em modo assert");
+                        Instrucao p4 = main.createAssertMain(p2);
+                        //System.out.println("Inicio\n"+p4.toString()+"\nFim\n");
+                        instrucoes = main.compileAnnot(p4);                        
                     }
 					else if (args[0].equals("-bs")) {
 						Instrucao p3 = `TopDown(stratBadSmells()).visit(p);
 						instrucoes = main.compileAnnot(p3);
 					}
-					else {
+					else {					
 						instrucoes = main.compileAnnot(p2);
 					}
 				}
-				else {
+				else {					
+					//System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
 					instrucoes = main.compileAnnot(p2);
 				}
 				String functionDeclarationsAndArguments = main.functionsDeclarations.toString();
@@ -91,9 +107,9 @@ public class Main {
 
 			/* Export this representation to .dot file*/
 			/*
-			try{
-				FileWriter out=new FileWriter(args[1]);
-				Viewer.toDot(p,out);
+			try{				
+				FileWriter out=new FileWriter(args[1]);				
+				Viewer.toDot(p,out);				
 			}
 			catch (IOException e){
 				System.out.println("ERROR in dot file");
@@ -113,6 +129,224 @@ public class Main {
 		memAdress = 0;
 	}
 
+    
+    /*************************** ASSERT - BEGIN ******************************/
+    
+    
+    /**
+     * Recebe como argumento as intruções lidas e retorna as instruções adaptadas
+     * para o modo Assert.
+     */
+    private Instrucao createAssertMain(Instrucao i){
+        LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
+        myAssertCount=1;
+        
+        Instrucao instrucao = EmptySeqInstrucao.make();
+        Instrucao res = EmptySeqInstrucao.make();
+        Instrucao instrucoesMain = EmptySeqInstrucao.make(); //Seq de intruçoes que vao chamar as testes no main
+        
+        for(Instrucao aux : i.getCollectionSeqInstrucao()){
+            if(aux.isAssert()){
+                //Funcao que vai testar o assert
+                Instrucao elem = createFuncaoAssert((Assert) aux);
+                SeqInstrucao list = (SeqInstrucao) instrucao;
+                instrucao = list.append(elem);
+                
+                //adicionar Call no main
+                elem = (Instrucao) Exp.make(Call.make(lc, "myAssert"+myAssertCount, lc, lc, (Parametros) EmptyListaParametros.make(), lc, lc));
+                list = (SeqInstrucao) instrucoesMain;
+                instrucoesMain = list.append(elem);
+                
+                this.myAssertCount++;
+            }
+            else if(aux.isFuncao() && aux.getNome().equals("main")){
+                //"apagar" o main
+            }
+            else{
+                SeqInstrucao list = (SeqInstrucao) res;
+                res = list.append(aux);
+            }
+        }
+        
+        //main do modo assert
+        Instrucao main = Funcao.make(lc, DVoid.make(), lc, "main", lc, lc, (Argumentos)EmptyListaArgumentos.make(), lc, lc, instrucoesMain, lc);
+        Instrucao resNew = EmptySeqInstrucao.make();
+        
+        SeqInstrucao list = (SeqInstrucao) resNew;
+        resNew = list.append(main);
+        
+        list = (SeqInstrucao) resNew;
+        resNew = list.append(instrucao);
+        
+        list = (SeqInstrucao) resNew;
+        resNew = list.append(res);
+        
+        //System.out.println("RES: " + res.toString());
+        return resNew;
+    }
+    
+    /**
+     * Recebe como argumento um Assert e retorna a intrução que será a função de 
+     * teste do respetivo Assert
+     */
+    private Instrucao createFuncaoAssert(Assert a){
+        String nome = a.getNome();
+        ArgumentosAssert aa = a.getArgumentosAssert();
+        ExpectedAssert ea = a.getExpectedAssert();
+        
+        for(ExpectedAssert aux : ea.getCollectionExpAssert()){
+            if(aux.isExpectedArgInt()){
+                ListaParametros lp = convertArgumentosAssertToListaParametros(aa);
+                Int expected = convertExpectedToInt(ea);
+                LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
+                Call call = Call.make(lc, nome, lc, lc, lp, lc, lc);
+                Comp comp = Comp.make((Expressao)call, lc, Igual.make(), lc, (Expressao)expected);
+                
+                Instrucao i1 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make());
+                Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
+                Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
+                
+                Instrucao instIfSeq = EmptySeqInstrucao.make();
+                SeqInstrucao list = (SeqInstrucao) instIfSeq;
+                instIfSeq = list.append(instIf);
+                
+                Instrucao f = Funcao.make(lc, DVoid.make(), lc, "myAssert"+myAssertCount, lc, lc, (Argumentos)EmptyListaArgumentos.make(), lc, lc, instIfSeq, lc);
+                return f;
+            }
+            else if(aux.isExpectedArgChar()){
+            
+            }
+            else if(aux.isExpectedArgBool()){
+            
+            }
+            else if(aux.isExpectedArgComp()){
+                
+            }
+        }
+        return null;
+    }
+    
+    
+    private Int convertExpectedToInt(ExpectedAssert ea){
+        for(ExpectedAssert aux : ea.getCollectionExpAssert()){
+            if(aux.isExpectedArgInt()){
+                Int res = Int.make(aux.getInt());
+                //System.out.println("Construi o INT "+res.getInt());
+                return res;
+            }
+        }
+        return null;
+    }
+    
+    
+    private ListaParametros convertArgumentosAssertToListaParametros( ArgumentosAssert args){
+        Parametros lp = EmptyListaParametros.make();
+        
+        for(ArgumentosAssert aux : args.getCollectionListaArgsAssert()){
+            if(aux.isArgumentoAssertInt()){
+                Expressao exp = Int.make(aux.getInt());
+                LComentarios lc = EmptyComentarios.make();
+                Parametros elem = (Parametros)Parametro.make(lc, exp, lc);
+                ListaParametros list = (ListaParametros) lp;
+                lp = list.append(elem);
+            }
+            
+        }
+        //System.out.println("Construi a litaParametro "+lp.toString());
+        return (ListaParametros)lp;
+    }
+    
+    
+        /*************************** ASSERT - END ******************************/
+    
+    
+    /*
+     private Instrucao createAssertMain2(Instrucao i){
+    	Instrucao instrucao = EmptySeqInstrucao.make();
+    	Instrucao res = EmptySeqInstrucao.make();
+     
+    	for(Instrucao aux : i.getCollectionSeqInstrucao()){
+     if(aux.isAssert()){
+     Instrucao elem = createInstrucaoAssert((Assert) aux);
+     SeqInstrucao list = (SeqInstrucao) instrucao;
+     instrucao = list.append(elem);
+     }
+     else if(aux.isFuncao() && aux.getNome().equals("main")){
+     //System.out.println("DELETE MAIN");
+     }
+     else{
+     //elem is aux
+     SeqInstrucao list = (SeqInstrucao) res;
+     res = list.append(aux);
+     }
+    	}
+     
+     LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
+    	Instrucao main = Funcao.make(lc, DVoid.make(), lc, "main", lc, lc, (Argumentos)EmptyListaArgumentos.make(), lc, lc, instrucao, lc);
+    	//System.out.println("MAIN: " + main.toString());
+     
+    	Instrucao resNew = EmptySeqInstrucao.make();
+     
+    	SeqInstrucao list = (SeqInstrucao) resNew;
+    	resNew = list.append(main);
+     
+     list = (SeqInstrucao) resNew;
+    	resNew = list.append(res);
+     
+    	//System.out.println("RES: " + res.toString());
+     
+    	return resNew;
+     }
+     */
+    
+    
+    /*
+     private Instrucao createInstrucaoAssert(Assert a){
+    	//System.out.println("vou tratar um Assert");
+    	String nome = a.getNome();
+    	//System.out.println("nome: "+nome);
+    	ArgumentosAssert aa = a.getArgumentosAssert();
+    	//System.out.println("argumentos: "+aa.toString());
+    	ExpectedAssert ea = a.getExpectedAssert();
+    	//System.out.println("expected: "+ea.toString());
+     
+     
+     for(ExpectedAssert aux : ea.getCollectionExpAssert()){
+     if(aux.isExpectedArgInt()){
+     //If(Comp(Call"f",ListaParametros(ParametroInt(3)),Igual(),Int(6)),SeqInstrucao(Exp(PrintChar("T"))),SeqInstrucao(Exp(PrintChar("F"))))
+     
+     //System.out.println("I found a expected INT !");
+     //construir parametros
+     ListaParametros lp = convertArgumentosAssertToListaParametros(aa);
+     //expected-retorno
+     Int expected = convertExpectedToInt(ea);
+     
+     
+     LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
+     Call call = Call.make(lc, nome, lc, lc, lp, lc, lc);
+     //System.out.println("Tenho o CALL: "+call.toString());
+     
+     Comp comp = Comp.make((Expressao)call, lc, Igual.make(), lc, (Expressao)expected);
+     //System.out.println("Tenho o COMP: "+comp.toString());
+     
+     //System.out.println("construi essa porra: "+ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make()));
+     Instrucao i1 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make());
+     Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
+     Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
+     //System.out.println("construi essa porra: " + instIf.toString());
+     return instIf;
+     }
+    	}
+     
+    	return null;
+     }
+     */
+    
+    
+        /*********************************************************/
+
+    
+    
 	public static Argumentos removeArgumentosNaoUtilizados(Argumentos args, TreeSet<String> idsUtilizados) {
 		%match(args) {
 			ListaArgumentos(arg1,tailArg*) -> {
@@ -322,6 +556,7 @@ public class Main {
 			}
       }
     }
+
 
 	private String compileAnnot(Instrucao inst) {
 		NumToInt numInstrucao = new NumToInt(1);
