@@ -21,12 +21,15 @@
 
 >>java gram/Main -assert  < myTest.i > myTest.msp
 
+
+
+
 >>Terminal 2 - to run program C-- in virtual machine MSP ("Mais Simples Possível")
 
-cd genMaqV/
+>>cd genMaqV/
 
-cp ../genI/myTest.msp .
+>>cp ../genI/myTest.msp .
 
-javac maqv/Main.java
+>>javac maqv/Main.java
 
-java maqv/Main myTest.msp
+>>java maqv/Main myTest.msp
