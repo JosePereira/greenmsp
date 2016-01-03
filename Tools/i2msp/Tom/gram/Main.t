@@ -48,9 +48,6 @@ public class Main {
 			//System.out.println("Result = " + iAdaptor.getTerm(b)); // name of the Gom module + Adaptor
 			Instrucao p = (Instrucao) iAdaptor.getTerm(b);
 
-      		//teste para verificar que a gramatica esta a funcionar
-      		//System.out.println("InicioCARALHO\n"+p.toString()+"\nFim\n");
-
 			Main main = new Main();
 
 			try {
@@ -61,9 +58,9 @@ public class Main {
 				Instrucao p2 = p;
 				int numInst = numInstrucao.get(0)-1;
 				LComentarios c = `Vazio();
-				Expressao numInstExps = `Expressoes(Print(c,c,c,Int(numInst),c,c),Print(c,c,c,Char("#"),c,c));
+				//Expressao numInstExps = `Expressoes(Print(c,c,c,Int(numInst),c,c),Print(c,c,c,Char("#"),c,c));
 				NumToInt n = new NumToInt(1);
-				String numInstString = main.compileAnnotExpressoes(numInstExps, n);
+				//String numInstString = main.compileAnnotExpressoes(numInstExps, n);
 				String instrucoes = "";
 				if (args.length > 0) {
 					if (args[0].equals("-fi") && args.length > 1) {
@@ -93,13 +90,12 @@ public class Main {
 					}
 				}
 				else {					
-					//System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
+					System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
 					instrucoes = main.compileAnnot(p2);
 				}
 				String functionDeclarationsAndArguments = main.functionsDeclarations.toString();
-                //System.out.println(numInstString + instrucoes);
                 //System.out.println("FunctionDecla ANTES");
-				System.out.println(functionDeclarationsAndArguments + numInstString + instrucoes);
+				System.out.println(functionDeclarationsAndArguments + instrucoes);
                 //System.out.println("FunctionDecla DEPOIS");
 			} catch(VisitFailure e) {
 				System.out.println("the strategy failed");
@@ -193,17 +189,16 @@ public class Main {
         String nome = a.getNome();
         ArgumentosAssert aa = a.getArgumentosAssert();
         ExpectedAssert ea = a.getExpectedAssert();
+        LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
+        ListaParametros lp = convertArgumentosAssertToListaParametros(aa);
+        Int expected = convertExpectedToInt(ea);
+        Call call = Call.make(lc, nome, lc, lc, lp, lc, lc);
+        Instrucao i1 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make());
+        Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
         
         for(ExpectedAssert aux : ea.getCollectionExpAssert()){
             if(aux.isExpectedArgInt()){
-                ListaParametros lp = convertArgumentosAssertToListaParametros(aa);
-                Int expected = convertExpectedToInt(ea);
-                LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
-                Call call = Call.make(lc, nome, lc, lc, lp, lc, lc);
                 Comp comp = Comp.make((Expressao)call, lc, Igual.make(), lc, (Expressao)expected);
-                
-                Instrucao i1 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make());
-                Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
                 Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
                 
                 Instrucao instIfSeq = EmptySeqInstrucao.make();
@@ -220,7 +215,33 @@ public class Main {
             
             }
             else if(aux.isExpectedArgComp()){
+                OpComp oc=null;
+                switch(aux.getCompAssert()){
+                    case "==" :
+                        oc = Igual.make();
+                        break;
+                    case ">=" :
+                        oc = MaiorQ.make();
+                        break;
+                    case "<=" :
+                        oc = MenorQ.make();
+                        break;
+                    case ">" :
+                        oc = Maior.make();
+                        break;
+                    case "<" :
+                        oc = Menor.make();
+                        break;
+                }
+                Comp comp = Comp.make((Expressao)call, lc, (OpComp)oc, lc, (Expressao)expected);
+                Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
                 
+                Instrucao instIfSeq = EmptySeqInstrucao.make();
+                SeqInstrucao list = (SeqInstrucao) instIfSeq;
+                instIfSeq = list.append(instIf);
+                
+                Instrucao f = Funcao.make(lc, DVoid.make(), lc, "myAssert"+myAssertCount, lc, lc, (Argumentos)EmptyListaArgumentos.make(), lc, lc, instIfSeq, lc);
+                return f;
             }
         }
         return null;
@@ -229,9 +250,8 @@ public class Main {
     
     private Int convertExpectedToInt(ExpectedAssert ea){
         for(ExpectedAssert aux : ea.getCollectionExpAssert()){
-            if(aux.isExpectedArgInt()){
+            if(aux.isExpectedArgInt() || aux.isExpectedArgComp()){
                 Int res = Int.make(aux.getInt());
-                //System.out.println("Construi o INT "+res.getInt());
                 return res;
             }
         }
@@ -252,7 +272,6 @@ public class Main {
             }
             
         }
-        //System.out.println("Construi a litaParametro "+lp.toString());
         return (ListaParametros)lp;
     }
     
