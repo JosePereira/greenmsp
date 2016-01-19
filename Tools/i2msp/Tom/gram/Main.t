@@ -77,9 +77,12 @@ public class Main {
 					}
                     else if(args[0].equals("-assert")){
                         //System.out.println("programa em modo assert");
-                        Instrucao p4 = main.createAssertMain(p2);
+                        //System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
+                        Instrucao p4 = main.recFix(p2);
                         //System.out.println("Inicio\n"+p4.toString()+"\nFim\n");
-                        instrucoes = main.compileAnnot(p4);                        
+                        Instrucao p5 = main.createAssertMain(p4);
+                        //System.out.println("Inicio\n"+p5.toString()+"\nFim\n");
+                        instrucoes = main.compileAnnot(p5);
                     }
 					else if (args[0].equals("-bs")) {
 						Instrucao p3 = `TopDown(stratBadSmells()).visit(p);
@@ -90,7 +93,7 @@ public class Main {
 					}
 				}
 				else {					
-					System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
+					//System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
 					instrucoes = main.compileAnnot(p2);
 				}
 				String functionDeclarationsAndArguments = main.functionsDeclarations.toString();
@@ -128,6 +131,63 @@ public class Main {
     
     /*************************** ASSERT - BEGIN ******************************/
     
+    
+    private Instrucao recFix(Instrucao i){
+        Instrucao instrucao = EmptySeqInstrucao.make();
+        
+        for(Instrucao aux : i.getCollectionSeqInstrucao()){
+            if(aux.isFuncao()){
+                if(aux.getDefTipo().isDBoolean() || aux.getDefTipo().isDChar()){
+                    Instrucao instrucaoAux = recFix(aux.getInstrucao());
+                    Instrucao elem = ConsSeqInstrucao.make((Instrucao)Funcao.make(aux.getc1(),(DefTipo)DInt.make(),aux.getc2(),aux.getNome(),aux.getc3(),aux.getc4(),aux.getArgumentos(),aux.getc5(),aux.getc6(),  instrucaoAux  ,aux.getc7()), EmptySeqInstrucao.make());
+                    SeqInstrucao list = (SeqInstrucao) instrucao;
+                    instrucao = list.append(elem);
+                    //System.out.println("UPDATE:"+instrucao.toString());
+                }
+                else{
+                    SeqInstrucao list = (SeqInstrucao) instrucao;
+                    instrucao = list.append(aux);
+                }
+            }
+            else if(aux.isIf()){
+                Instrucao i1 = recFix(aux.getInstrucao1());
+                Instrucao i2 = recFix(aux.getInstrucao2());
+
+                Instrucao elem = ConsSeqInstrucao.make((Instrucao)If.make(aux.getc1(), aux.getc2(),aux.getc3(),aux.getCondicao(),aux.getc4(), aux.getc5(),i1,i2), EmptySeqInstrucao.make());
+                SeqInstrucao list = (SeqInstrucao) instrucao;
+                instrucao = list.append(elem);
+                //System.out.println("UPDATE:"+instrucao.toString());
+
+            }
+            else if(aux.isReturn()){
+                if(aux.getExpressao().isTrue()){
+                    Instrucao elem = ConsSeqInstrucao.make((Instrucao)Return.make(aux.getc1(), aux.getc2(), (Expressao)Int.make(1), aux.getc3()), EmptySeqInstrucao.make());
+                    SeqInstrucao list = (SeqInstrucao) instrucao;
+                    instrucao = list.append(elem);
+                    //System.out.println("UPDATE:"+instrucao.toString());
+                }
+                else if(aux.getExpressao().isFalse()){
+                    Instrucao elem = ConsSeqInstrucao.make((Instrucao)Return.make(aux.getc1(), aux.getc2(), (Expressao)Int.make(0), aux.getc3()), EmptySeqInstrucao.make());
+                    SeqInstrucao list = (SeqInstrucao) instrucao;
+                    instrucao = list.append(elem);
+                    //System.out.println("UPDATE:"+instrucao.toString());
+                }
+                else if(aux.getExpressao().isChar()){
+                    Instrucao elem = ConsSeqInstrucao.make((Instrucao)Return.make(aux.getc1(), aux.getc2(), (Expressao)Int.make( Character.getNumericValue( aux.getExpressao().getChar().charAt(0) ) ), aux.getc3()), EmptySeqInstrucao.make());
+                    SeqInstrucao list = (SeqInstrucao) instrucao;
+                    instrucao = list.append(elem);
+                    //System.out.println("UPDATE:"+instrucao.toString());
+                }
+            }
+            else{
+                SeqInstrucao list = (SeqInstrucao) instrucao;
+                instrucao = list.append(aux);
+            }
+        }
+        
+        return instrucao;
+    }
+
     
     /**
      * Recebe como argumento as intruções lidas e retorna as instruções adaptadas
@@ -197,7 +257,10 @@ public class Main {
         Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
         
         for(ExpectedAssert aux : ea.getCollectionExpAssert()){
-            if(aux.isExpectedArgInt()){
+            
+            //TODO juntar isto tudo?
+            
+            if(aux.isExpectedArgInt() || aux.isExpectedArgChar() || aux.isExpectedArgBool()){
                 Comp comp = Comp.make((Expressao)call, lc, Igual.make(), lc, (Expressao)expected);
                 Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
                 
@@ -207,12 +270,6 @@ public class Main {
                 
                 Instrucao f = Funcao.make(lc, DVoid.make(), lc, "myAssert"+myAssertCount, lc, lc, (Argumentos)EmptyListaArgumentos.make(), lc, lc, instIfSeq, lc);
                 return f;
-            }
-            else if(aux.isExpectedArgChar()){
-            
-            }
-            else if(aux.isExpectedArgBool()){
-            
             }
             else if(aux.isExpectedArgComp()){
                 OpComp oc=null;
@@ -251,9 +308,18 @@ public class Main {
     private Int convertExpectedToInt(ExpectedAssert ea){
         for(ExpectedAssert aux : ea.getCollectionExpAssert()){
             if(aux.isExpectedArgInt() || aux.isExpectedArgComp()){
-                Int res = Int.make(aux.getInt());
-                return res;
+                return Int.make(aux.getInt());
             }
+            else if(aux.isExpectedArgBool()){
+                if(aux.getBoolAssert().equals("true"))
+                   return Int.make(1);
+                else
+                   return Int.make(0);
+            }
+            else if(aux.isExpectedArgChar()){
+                return Int.make( Character.getNumericValue( aux.getChar().charAt(0) ) );
+            }
+
         }
         return null;
     }
@@ -276,94 +342,7 @@ public class Main {
     }
     
     
-        /*************************** ASSERT - END ******************************/
-    
-    
-    /*
-     private Instrucao createAssertMain2(Instrucao i){
-    	Instrucao instrucao = EmptySeqInstrucao.make();
-    	Instrucao res = EmptySeqInstrucao.make();
-     
-    	for(Instrucao aux : i.getCollectionSeqInstrucao()){
-     if(aux.isAssert()){
-     Instrucao elem = createInstrucaoAssert((Assert) aux);
-     SeqInstrucao list = (SeqInstrucao) instrucao;
-     instrucao = list.append(elem);
-     }
-     else if(aux.isFuncao() && aux.getNome().equals("main")){
-     //System.out.println("DELETE MAIN");
-     }
-     else{
-     //elem is aux
-     SeqInstrucao list = (SeqInstrucao) res;
-     res = list.append(aux);
-     }
-    	}
-     
-     LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
-    	Instrucao main = Funcao.make(lc, DVoid.make(), lc, "main", lc, lc, (Argumentos)EmptyListaArgumentos.make(), lc, lc, instrucao, lc);
-    	//System.out.println("MAIN: " + main.toString());
-     
-    	Instrucao resNew = EmptySeqInstrucao.make();
-     
-    	SeqInstrucao list = (SeqInstrucao) resNew;
-    	resNew = list.append(main);
-     
-     list = (SeqInstrucao) resNew;
-    	resNew = list.append(res);
-     
-    	//System.out.println("RES: " + res.toString());
-     
-    	return resNew;
-     }
-     */
-    
-    
-    /*
-     private Instrucao createInstrucaoAssert(Assert a){
-    	//System.out.println("vou tratar um Assert");
-    	String nome = a.getNome();
-    	//System.out.println("nome: "+nome);
-    	ArgumentosAssert aa = a.getArgumentosAssert();
-    	//System.out.println("argumentos: "+aa.toString());
-    	ExpectedAssert ea = a.getExpectedAssert();
-    	//System.out.println("expected: "+ea.toString());
-     
-     
-     for(ExpectedAssert aux : ea.getCollectionExpAssert()){
-     if(aux.isExpectedArgInt()){
-     //If(Comp(Call"f",ListaParametros(ParametroInt(3)),Igual(),Int(6)),SeqInstrucao(Exp(PrintChar("T"))),SeqInstrucao(Exp(PrintChar("F"))))
-     
-     //System.out.println("I found a expected INT !");
-     //construir parametros
-     ListaParametros lp = convertArgumentosAssertToListaParametros(aa);
-     //expected-retorno
-     Int expected = convertExpectedToInt(ea);
-     
-     
-     LComentarios lc = EmptyComentarios.make(); //lista de comentarios vazios
-     Call call = Call.make(lc, nome, lc, lc, lp, lc, lc);
-     //System.out.println("Tenho o CALL: "+call.toString());
-     
-     Comp comp = Comp.make((Expressao)call, lc, Igual.make(), lc, (Expressao)expected);
-     //System.out.println("Tenho o COMP: "+comp.toString());
-     
-     //System.out.println("construi essa porra: "+ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make()));
-     Instrucao i1 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("T"), lc, lc)), EmptySeqInstrucao.make());
-     Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
-     Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
-     //System.out.println("construi essa porra: " + instIf.toString());
-     return instIf;
-     }
-    	}
-     
-    	return null;
-     }
-     */
-    
-    
-        /*********************************************************/
-
+    /*************************** ASSERT - END ******************************/
     
     
 	public static Argumentos removeArgumentosNaoUtilizados(Argumentos args, TreeSet<String> idsUtilizados) {
