@@ -37,6 +37,7 @@ public class Main {
 	StringBuilder functionsDeclarations;
 
 	private int myAssertCount; //contador para o número de Asserts
+    private List<String> reportList =  new ArrayList<String>();
 
 	public static void main(String[] args) {
 		try {			
@@ -47,6 +48,7 @@ public class Main {
 			Tree b = (Tree) parser.prog().getTree();
 			//System.out.println("Result = " + iAdaptor.getTerm(b)); // name of the Gom module + Adaptor
 			Instrucao p = (Instrucao) iAdaptor.getTerm(b);
+
 
 			Main main = new Main();
 
@@ -76,6 +78,7 @@ public class Main {
 						}
 					}
                     else if(args[0].equals("-assert")){
+                        main.prepareReport(p2);
                         //System.out.println("programa em modo assert");
                         //System.out.println("Inicio\n"+p2.toString()+"\nFim\n");
                         Instrucao p4 = main.recFix(p2);
@@ -189,6 +192,51 @@ public class Main {
     }
 
     
+    
+    public void prepareReport(Instrucao i){
+    
+        StringBuilder res = new StringBuilder();
+        
+        for(Instrucao aux : i.getCollectionSeqInstrucao()){
+            if(aux.isAssert()){
+                res.append(aux.getNome()+":");
+                for(ArgumentosAssert arg: aux.getArgumentosAssert().getCollectionListaArgsAssert()){
+                    res.append(arg.getInt()+":");
+                }
+                for( ExpectedAssert ea : aux.getExpectedAssert().getCollectionExpAssert()){
+                    if(ea.isExpectedArgInt() ){
+                        res.append("==:"+ea.getInt());
+                    }
+                    else if(ea.isExpectedArgBool()){
+                        if(ea.getBoolAssert().equals("true"))
+                            res.append("==:true" );
+                        else
+                            res.append("==:false" );
+                    }
+                    else if(ea.isExpectedArgChar()){
+                        res.append("==:" +ea.getChar() );
+                    }
+                    else if(ea.isExpectedArgComp()){
+                        res.append(ea.getCompAssert()+":" +ea.getInt() );
+                    }
+
+                }
+                res.append("\n");
+            }
+        }
+        
+        try{
+            PrintWriter writer = new PrintWriter("reportAssert.txt", "UTF-8");
+            //for(String aux : this.reportList)
+            writer.println(res.toString());
+            writer.close();
+        }
+        catch(UnsupportedEncodingException f){}
+        catch(FileNotFoundException f){}
+    
+    }
+    
+    
     /**
      * Recebe como argumento as intruções lidas e retorna as instruções adaptadas
      * para o modo Assert.
@@ -213,6 +261,7 @@ public class Main {
                 list = (SeqInstrucao) instrucoesMain;
                 instrucoesMain = list.append(elem);
                 
+                this.reportList.add(aux.getNome());
                 this.myAssertCount++;
             }
             else if(aux.isFuncao() && aux.getNome().equals("main")){
@@ -237,7 +286,6 @@ public class Main {
         list = (SeqInstrucao) resNew;
         resNew = list.append(res);
         
-        //System.out.println("RES: " + res.toString());
         return resNew;
     }
     
@@ -257,9 +305,6 @@ public class Main {
         Instrucao i2 = ConsSeqInstrucao.make((Instrucao)Exp.make(Print.make(lc, lc, lc, Char.make("F"), lc, lc)), EmptySeqInstrucao.make());
         
         for(ExpectedAssert aux : ea.getCollectionExpAssert()){
-            
-            //TODO juntar isto tudo?
-            
             if(aux.isExpectedArgInt() || aux.isExpectedArgChar() || aux.isExpectedArgBool()){
                 Comp comp = Comp.make((Expressao)call, lc, Igual.make(), lc, (Expressao)expected);
                 Instrucao instIf = If.make(lc, lc, lc, comp, lc, lc, i1, i2);
