@@ -1,6 +1,6 @@
 ## Mestrado em Engenharia Informática
 ## Análise e Teste de Software
-### greenmsp - Framework de teste unitário em C--
+### extensão para testes unitários da Framework C--
 
 > open 2 terminals in greenmsp/Tools/i2msp/Tom/
 
