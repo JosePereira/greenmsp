@@ -26,7 +26,8 @@
 >>cd genMaqV/
 
 >>cp ../genI/myTest.msp .
+>>cp ../genI/reportAssert.txt .
 
 >>javac maqv/Main.java
 
->>java maqv/Main myTest.msp
+>>java maqv/Main myTest.msp -assert
